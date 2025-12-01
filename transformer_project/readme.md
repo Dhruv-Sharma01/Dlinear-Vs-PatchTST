@@ -1,20 +1,20 @@
-Benchmarking Robustness: Linear vs. Transformer Architectures for Long-Horizon Industrial Forecasting
+# Benchmarking Robustness: Linear vs. Transformer Architectures for Long-Horizon Industrial Forecasting
 
-📄 Abstract
+## Abstract
 
 This research project conducts a rigorous comparative analysis between state-of-the-art Patch-Based Transformers (PatchTST) and efficient Linear Decomposition models (DLinear) on the ETTh1 industrial benchmark. The study evaluates performance across varying lookback windows (336h, 720h) and introduces an adversarial robustness evaluation to simulate sensor failure.
 
-Key Findings:
+### Key Findings
 
-Efficiency: On clean data, the simple DLinear model outperforms complex Transformers (MSE 0.3849 vs 0.3957), replicating the findings of Zeng et al. (2023).
+- **Efficiency:** On clean data, the simple DLinear model outperforms complex Transformers (MSE 0.3849 vs 0.3957), consistent with the findings of Zeng et al. (2023).  
+- **Robustness:** In simulated sensor-failure scenarios (>10% data missing), PatchTST significantly outperforms DLinear, demonstrating that self-attention provides critical resilience under hostile data conditions.  
+- **Failure of Tradition:** Classical statistical models (ARIMA) failed catastrophically (MSE 3.18) due to recursive error accumulation over long forecasting horizons.
 
-Robustness: In simulated sensor failure scenarios (>10% data missing), PatchTST significantly outperforms DLinear, demonstrating that the self-attention mechanism provides critical resilience in hostile data environments.
+---
 
-Failure of Tradition: Classical statistical models (ARIMA) failed catastrophically (MSE 3.18) due to recursive error accumulation over long horizons.
+## Repository Structure
 
-📂 Repository Structure
-
-The codebase is modularized for reproducibility, separating statistical baselines, linear architectures, and transformer logic.
+```
 
 TRANSFORMER_PROJECT/
 ├── data/
@@ -30,163 +30,103 @@ TRANSFORMER_PROJECT/
 │   ├── train.py                # Training Loop for Transformers
 │   ├── train_baseline.py       # Training Loop for Linear Models
 │   └── testdataset.py          # Unit Tests for Data Pipeline
-├── arima_garch_result.png      # Visualization: The Recursive Trap
-├── robustness_masking.png      # Visualization: The Robustness Crossover
+├── arima_garch_result.png      # Visualization: Recursive Trap
+├── robustness_masking.png      # Visualization: Robustness Crossover
 ├── best_model_baseline.pth     # Checkpoint: Trained DLinear
 ├── best_model_patch_revin.pth  # Checkpoint: Trained PatchTST
 └── requirements.txt            # Dependencies
 
+````
 
-🧠 Methodology & Architectures
+---
 
-1. The Challenge
+## Methodology & Architectures
 
-Predicting Oil Temperature (OT) 96 hours into the future based on 336 hours of history using multivariate sensor data (Load, Voltage, etc.).
+### 1. Problem Setting
 
-2. Models Evaluated
+Forecasting **Oil Temperature (OT)** 96 hours ahead using 336 hours of historical multivariate sensor data (Load, Voltage, etc.).
 
-DLinear: A decomposition-based linear model that separates Trend and Seasonality. It uses fixed-weight matrices for direct multi-step forecasting.
+### 2. Models Evaluated
 
-PatchTST: A Transformer that segments time series into "Patches" (Tokens) to preserve local semantic meaning. Features Channel Independence and RevIN to handle distribution shift.
+- **DLinear:** Decomposition-based linear model separating trend and seasonality. Uses fixed-weight matrices for direct multi-step forecasting.  
+- **PatchTST:** Transformer segmenting time series into patches (tokens) to retain local structure. Includes Channel Independence and RevIN for distribution shift handling.  
+- **ARIMA:** Classical autoregressive baseline.
 
-ARIMA: A classical autoregressive model used as a control group.
+---
 
-📊 Experimental Results
+## Experimental Results
 
-A. Clean Data Performance (Test Set)
+### A. Clean Data Performance (Test Set)
 
-Rank
+| Rank | Model Architecture      | Test MSE | Test MAE | Training Time/Epoch |
+|------|--------------------------|----------|----------|----------------------|
+| 1    | DLinear (Baseline)       | 0.3849   | 0.4033   | ~2.5s                |
+| 2    | PatchTST + RevIN         | 0.3957   | 0.4106   | ~107s                |
+| 3    | PatchTST (Vanilla)       | 0.4005   | 0.4194   | ~110s                |
+| 4    | ARIMA (Statistical)      | 3.1857   | 1.3925   | N/A                  |
 
-Model Architecture
+**Insight:** On stable datasets, DLinear is superior—approximately 4% more accurate and 45× faster to train.
 
-Test MSE
+---
 
-Test MAE
+### B. Robustness Analysis (Sensor Masking)
 
-Training Time/Epoch
+We evaluated both models under random sensor masking from 0% to 50% missing data.
 
-1
+| % Missing Data | DLinear MSE | PatchTST MSE | Winner        |
+|----------------|-------------|---------------|----------------|
+| 0%             | 0.3834      | 0.3936        | Linear         |
+| 10%            | 0.4063      | 0.3968        | Transformer*   |
+| 30%            | 0.4843      | 0.4421        | Transformer    |
+| 50%            | 0.6048      | 0.5440        | Transformer    |
 
-DLinear (Baseline)
+*Crossing point: Transformers start outperforming linear models beyond ~10% missing data.
 
-0.3849
+**Conclusion:**  
+DLinear behaves like a **Glass Cannon**—excellent on clean data but fragile under corruption. PatchTST is more resilient because attention can infer missing context using surrounding patches.
 
-0.4033
+---
 
-~2.5s
+## How to Replicate
 
-2
-
-PatchTST + RevIN
-
-0.3957
-
-0.4106
-
-~107s
-
-3
-
-PatchTST (Vanilla)
-
-0.4005
-
-0.4194
-
-~110s
-
-4
-
-ARIMA (Statistical)
-
-3.1857
-
-1.3925
-
-N/A
-
-Insight: On stable data, the Linear model is superior—4% more accurate and 45x faster to train.
-
-B. Robustness Analysis (Adversarial)
-
-We subjected both models to random sensor masking (0% to 50% missing data).
-
-% Missing Data
-
-DLinear MSE
-
-PatchTST MSE
-
-Winner
-
-0%
-
-0.3834
-
-0.3936
-
-Linear
-
-10%
-
-0.4063
-
-0.3968
-
-Transformer (Crossover)
-
-30%
-
-0.4843
-
-0.4421
-
-Transformer
-
-50%
-
-0.6048
-
-0.5440
-
-Transformer
-
-Conclusion: DLinear is a "Glass Cannon"—excellent but fragile. PatchTST is resilient; its Attention mechanism allows it to infer missing contexts from neighboring patches.
-
-🚀 How to Replicate
-
-Setup Environment:
-
+### 1. Setup Environment
+```bash
 pip install -r requirements.txt
+````
 
+### 2. Run Statistical Baseline
 
-Run Statistical Baseline:
-
+```bash
 python3 src/classicalmodels.py
+```
 
+Outputs `arima_garch_result.png`.
 
-Generates arima_garch_result.png showing why ARIMA fails.
+### 3. Train Models
 
-Train Models:
-
+```bash
 # Train the Linear Baseline
 python3 src/train_baseline.py
 
 # Train the Transformer
 python3 src/train.py
+```
 
+### 4. Run Robustness Evaluation
 
-Run Robustness Evaluation:
-
+```bash
 python3 src/robustness_test.py
+```
 
+Outputs `robustness_masking.png`.
 
-Generates robustness_masking.png comparing model resilience.
+---
 
-📜 References
+## References
 
-DLinear: Are Transformers Effective for Time Series Forecasting? (Zeng et al., 2023)
+* **DLinear:** Are Transformers Effective for Time Series Forecasting? — Zeng et al., 2023
+* **PatchTST:** A Time Series is Worth 64 Words — Nie et al., 2023
+* **Dataset:** ETT-small — Zhou et al., 2021
 
-PatchTST: A Time Series is Worth 64 Words (Nie et al., 2023)
-
-Dataset: ETT-Small (Zhou et al., 2021)
+```markdown
+```
